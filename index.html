@@ -1,28 +1,29 @@
-
-    <!DOCTYPE html>
-    <html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- we import arjs version without NFT but with marker + location based support -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://unpkg.com/aframe-gif-shader/dist/aframe-gif-shader.min.js"></script>
-    <body style="margin : 0px; overflow: hidden;">
-    <a-scene embedded arjs>
-        <a-marker type='pattern' url='assets/markers/pattern-ar.patt'>
-<!--        <a-marker-camera preset='hiro'>-->
+</head>
+<body>
+<a-scene mindar-image="imageTargetSrc: assets/images/ANU.mind;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <a-assets>
+        <a-asset-item id="avatarModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-entity mindar-image-target="targetIndex: 0">
 <!--            <a-entity-->
 <!--                    position="0 0 0"-->
-<!--                    scale="1 1 1"-->
-<!--                    gltf-model="assets/models/scene.gltf"-->
-<!--            ></a-entity>-->
-                <a-entity geometry="primitive: plane; height: 1.2; width: 2.13"
-                          material="shader: gif; src: url(assets/models/model.gif)"
-                          position="1.7 0 0"
-                          rotation="-90 0 0"
-                ></a-entity>
-        </a-marker>
-        <a-entity camera></a-entity>
-    </a-scene>
-    </body>
-    </html>
-
-
+<!--                    scale="0.5 0.5 0.5"-->
+<!--                    gltf-model="assets/models/scene.gltf">-->
+<!--            </a-entity>-->
+        <a-entity geometry="primitive: plane; height: 1.2; width: 2.13"
+                  material="shader: gif; src: url(assets/models/model.gif)"
+                  scale="0.5 0.5 0.5"
+        ></a-entity>
+    </a-entity>
+</a-scene>
+</body>
+</html>
