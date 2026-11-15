@@ -1,10 +1,33 @@
 {
-  "name": "ar-portfolio",
+  "name": "ki",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
+  "description": "Ki: hand-tracked energy orb in the browser",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "node test/e2e.mjs"
   },
-  "private": true
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.2.3",
+    "geist": "^1.9.2",
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.160.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^6.4.6",
+    "vitest": "^5.1.0"
+  }
 }
