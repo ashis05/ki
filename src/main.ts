@@ -1,207 +1,201 @@
+// Landing + lifecycle. Everything heavy (three.js, MediaPipe, the model) lives in the
+// lazily imported ./experience chunk and is only fetched after Start.
+
 import './styles.css';
-import { person } from './content';
-import { h, linkButtons, projectTiles } from './dom';
-import { cameraSupport, ArError } from './ar/errors';
-import type { ArSession } from './ar/session';
+import type { Experience, ErrorKind } from './experience';
 
-const app = document.getElementById('app');
-if (!app) throw new Error('#app missing');
+const $ = <T extends HTMLElement>(id: string): T => {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`#${id} missing`);
+  return el as T;
+};
 
-/* ---------- landing ---------- */
+const startBtn = $<HTMLButtonElement>('start');
+const note = $('support-note');
+const exp = $('exp');
+const stage = $('stage');
+const video = $<HTMLVideoElement>('cam');
+const hint = $('hint');
+const flash = $('flash');
+const stateBox = $('state');
+const toast = $('toast');
+const closeBtn = $<HTMLButtonElement>('close');
+const muteBtn = $<HTMLButtonElement>('mute');
+const flipBtn = $<HTMLButtonElement>('flip');
+const snapBtn = $<HTMLButtonElement>('snap');
+const paletteBtn = $<HTMLButtonElement>('palette');
+const paletteDot = $('palette-dot');
 
-const support = cameraSupport();
-
-const startBtn = h('button', { class: 'btn btn--primary', type: 'button', id: 'start' }, 'Start camera');
-const note = h('p', { class: 'note', id: 'support-note', role: 'status' });
-if (!support.ok) {
-  startBtn.setAttribute('disabled', '');
-  note.textContent = `${support.message} The links below work everywhere.`;
-} else {
-  note.textContent = 'Your camera is only used on this device to find the card. Nothing is recorded or uploaded.';
+if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+  startBtn.disabled = true;
+  note.textContent = window.isSecureContext
+    ? 'This browser cannot open a camera. Try a recent Chrome, Edge, Safari or Firefox.'
+    : 'Camera access needs a secure (https) connection.';
 }
 
-const landing = h(
-  'div',
-  { class: 'landing', id: 'landing' },
-  h(
-    'header',
-    { class: 'hero' },
-    h('p', { class: 'eyebrow' }, 'AR business card'),
-    h('h1', { class: 'hero__name' }, person.name),
-    h('p', { class: 'hero__role' }, `${person.role} · ${person.place}`),
-    h('p', { class: 'hero__lede' }, person.tagline),
-    h('div', { class: 'hero__actions' }, startBtn),
-    note,
-  ),
-  h(
-    'main',
-    { class: 'sheet-paper' },
-    h(
-      'section',
-      { class: 'block', 'aria-labelledby': 'links-h' },
-      h('h2', { id: 'links-h', class: 'block__title' }, 'Find me'),
-      h('div', { class: 'links' }, ...linkButtons(true)),
-    ),
-    h(
-      'section',
-      { class: 'block', 'aria-labelledby': 'proj-h' },
-      h('h2', { id: 'proj-h', class: 'block__title' }, 'Selected projects'),
-      h('div', { class: 'projects' }, ...projectTiles()),
-    ),
-    h('footer', { class: 'foot' }, `${person.name} · ${person.place}`),
-  ),
-);
+/* ---------- state box ---------- */
 
-/* ---------- AR overlay ---------- */
-
-const stage = h('div', { class: 'ar-stage', id: 'ar-stage' });
-const hint = h('p', { class: 'ar-hint', id: 'ar-hint', role: 'status' }, 'Fit the card in the frame');
-const frame = h('div', { class: 'ar-frame', 'aria-hidden': 'true' });
-const closeBtn = h('button', { class: 'ar-close', type: 'button', 'aria-label': 'Close camera' }, '×');
-const sheetBtn = h(
-  'button',
-  { class: 'btn btn--sheet', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'ar-sheet' },
-  'Links',
-);
-const sheet = h(
-  'div',
-  { class: 'ar-sheet', id: 'ar-sheet', role: 'region', 'aria-label': 'Links', hidden: '' },
-  h('div', { class: 'links links--sheet' }, ...linkButtons()),
-  h('div', { class: 'projects projects--sheet' }, ...projectTiles()),
-);
-const stateBox = h('div', { class: 'ar-state', id: 'ar-state', hidden: '' });
-
-const overlay = h(
-  'div',
-  { class: 'ar', id: 'ar', hidden: '', 'aria-label': 'Augmented reality view' },
-  stage,
-  frame,
-  hint,
-  closeBtn,
-  sheet,
-  sheetBtn,
-  stateBox,
-);
-
-app.append(landing, overlay);
-
-/* ---------- state ---------- */
-
-let session: ArSession | null = null;
-let sessionPromise: Promise<ArSession> | null = null;
-let arOpen = false;
-
-function setSheet(open: boolean) {
-  sheet.hidden = !open;
-  sheetBtn.setAttribute('aria-expanded', String(open));
-  sheetBtn.textContent = open ? 'Hide links' : 'Links';
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
 }
 
-function showLoading(text: string) {
+function showStatus(text: string) {
   stateBox.hidden = text === '';
-  if (text === '') return;
-  stateBox.replaceChildren(h('div', { class: 'spinner', 'aria-hidden': 'true' }), h('p', { role: 'status' }, text));
-  stateBox.dataset.kind = 'loading';
+  if (!text) return;
+  const p = el('p', '', text);
+  p.setAttribute('role', 'status');
+  stateBox.replaceChildren(el('div', 'spinner'), p);
+  stateBox.dataset['kind'] = 'loading';
 }
 
-const ERROR_COPY: Record<string, { title: string; body: string }> = {
+const ERRORS: Record<string, { title: string; body: string; retry: boolean }> = {
   denied: {
     title: 'Camera access is off',
-    body: 'To see the card come alive, allow camera access for this site. In Chrome or Android: tap the lock icon next to the address, then Permissions, then Camera. On iPhone: Settings, Safari, Camera, then choose Ask or Allow. Reload this page afterwards.',
+    body: 'Ki needs your camera to see your hand. Allow camera access for this site: in Chrome tap the lock icon by the address, then Permissions, then Camera. On iPhone open Settings, Safari, Camera and choose Ask or Allow. Then reload this page.',
+    retry: false,
   },
-  insecure: { title: 'Secure connection needed', body: 'Browsers only allow the camera on https pages.' },
-  unsupported: { title: 'Camera not available', body: 'This browser cannot open a camera. Try Safari or Chrome on your phone.' },
-  'no-camera': { title: 'No camera found', body: 'This device has no usable camera. Open this page on your phone instead.' },
-  busy: { title: 'Camera is busy', body: 'Another app is using the camera. Close it and try again.' },
-  target: { title: 'Could not start AR', body: 'The tracking data failed to load. Check your connection and try again.' },
-  unknown: { title: 'Something went wrong', body: 'The camera or tracker could not be started.' },
+  insecure: { title: 'Secure connection needed', body: 'Browsers only allow the camera on https pages.', retry: false },
+  unsupported: { title: 'Not supported here', body: 'This browser cannot open a camera. Try a recent Chrome, Edge, Safari or Firefox.', retry: false },
+  webgl: { title: 'Graphics not available', body: 'Ki needs WebGL 2 and WebAssembly. Try another browser or turn on hardware acceleration.', retry: false },
+  'no-camera': { title: 'No camera found', body: 'This device has no usable camera. Open Ki on a phone or a laptop with a webcam.', retry: false },
+  busy: { title: 'Camera is busy', body: 'Another app is using the camera. Close it and try again.', retry: true },
+  model: { title: 'Could not load the hand tracker', body: 'The tracking files failed to load. Check your connection and try again.', retry: true },
+  unknown: { title: 'Something went wrong', body: 'The camera or the tracker could not be started.', retry: true },
 };
 
 function showError(kind: string) {
-  const copy = ERROR_COPY[kind] ?? ERROR_COPY['unknown'];
-  if (!copy) return;
-  const retry = h('button', { class: 'btn btn--primary', type: 'button' }, 'Try again');
-  const back = h('button', { class: 'btn btn--ghost', type: 'button' }, 'Back to links');
-  retry.addEventListener('click', () => void openAr());
-  back.addEventListener('click', () => void closeAr());
-  stateBox.replaceChildren(
-    h('h2', { class: 'ar-state__title', tabindex: '-1' }, copy.title),
-    h('p', {}, copy.body),
-    h('div', { class: 'ar-state__actions' }, kind === 'denied' || kind === 'no-camera' ? back : retry, kind === 'denied' || kind === 'no-camera' ? null : back),
-  );
-  stateBox.dataset.kind = 'error';
+  const c = ERRORS[kind] ?? ERRORS['unknown']!;
+  const h = el('h2', 'exp__state-title', c.title);
+  h.tabIndex = -1;
+  const actions = el('div', 'exp__state-actions');
+  if (c.retry) {
+    const retry = el('button', 'btn', 'Try again');
+    retry.type = 'button';
+    retry.addEventListener('click', () => void open());
+    actions.append(retry);
+  }
+  const back = el('button', 'btn btn--ghost', 'Back');
+  back.type = 'button';
+  back.addEventListener('click', () => void close());
+  actions.append(back);
+  stateBox.replaceChildren(h, el('p', '', c.body), actions);
+  stateBox.dataset['kind'] = 'error';
   stateBox.hidden = false;
-  stateBox.querySelector<HTMLElement>('h2')?.focus();
+  h.focus();
 }
 
-function setFound(found: boolean) {
-  overlay.classList.toggle('is-found', found);
-  hint.textContent = found ? '' : 'Fit the card in the frame';
+let toastTimer = 0;
+function showToast(text: string) {
+  toast.textContent = text;
+  toast.classList.add('is-on');
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove('is-on'), 2200);
 }
 
-async function getSession(): Promise<ArSession> {
-  if (session) return session;
-  sessionPromise ??= import('./ar/session').then(({ ArSession }) => {
-    session = new ArSession(stage, {
-      onStage: showLoading,
-      onFound: () => setFound(true),
-      onLost: () => setFound(false),
-      onTargetRatio: (r) => overlay.style.setProperty('--card-ratio', String(1 / r)),
-    });
-    return session;
-  });
-  return sessionPromise;
+function setPalette(name: string, hex: string) {
+  paletteDot.style.background = hex;
+  paletteDot.style.boxShadow = `0 0 12px ${hex}`;
+  paletteBtn.setAttribute('aria-label', `Colour: ${name}. Pinch or tap to change`);
 }
 
-async function openAr() {
-  arOpen = true;
-  overlay.hidden = false;
-  document.documentElement.classList.add('ar-open');
-  setFound(false);
-  setSheet(false);
-  showLoading('Loading AR…');
+function setMuted(m: boolean) {
+  muteBtn.setAttribute('aria-pressed', String(m));
+  muteBtn.setAttribute('aria-label', m ? 'Unmute sound' : 'Mute sound');
+}
+
+/* ---------- lifecycle ---------- */
+
+let experience: Experience | null = null;
+let audioCtx: AudioContext | null = null;
+let isOpen = false;
+let suspended = false;
+
+function createAudio(): AudioContext | null {
+  // Must happen inside the click handler: browsers only allow audio after a gesture.
+  const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AC) return null;
   try {
-    const s = await getSession();
-    if (!arOpen) return;
-    await s.start();
-    if (arOpen) closeBtn.focus();
-  } catch (err) {
-    if (!arOpen) return;
-    // Failed chunk import (offline) lands here as a plain Error.
-    showError(err instanceof ArError ? err.kind : 'target');
-    sessionPromise = session ? sessionPromise : null;
+    const ctx = new AC();
+    void ctx.resume();
+    return ctx;
+  } catch {
+    return null;
   }
 }
 
-async function closeAr() {
-  arOpen = false;
-  overlay.hidden = true;
-  document.documentElement.classList.remove('ar-open');
+async function open() {
+  isOpen = true;
+  suspended = false;
+  exp.hidden = false;
+  document.documentElement.classList.add('exp-open');
+  showStatus('Loading…');
+  audioCtx ??= createAudio();
+  try {
+    const mod = await import('./experience');
+    if (!isOpen) return;
+    experience ??= new mod.Experience(
+      {
+        stage,
+        video,
+        hint,
+        flash,
+        status: showStatus,
+        palette: setPalette,
+        canFlip: (v) => (flipBtn.hidden = !v),
+        toast: showToast,
+      },
+      audioCtx,
+    );
+    await experience.start();
+    if (!isOpen) {
+      experience.stop();
+      return;
+    }
+    setMuted(experience.muted);
+    muteBtn.hidden = !experience.hasAudio;
+    closeBtn.focus();
+  } catch (err) {
+    if (!isOpen) return;
+    const kind = (err as { kind?: ErrorKind } | null)?.kind;
+    showError(kind ?? 'model');
+  }
+}
+
+async function close() {
+  isOpen = false;
+  exp.hidden = true;
+  document.documentElement.classList.remove('exp-open');
   stateBox.hidden = true;
-  setSheet(false);
-  await session?.stop();
+  experience?.stop();
   startBtn.focus();
 }
 
-startBtn.addEventListener('click', () => void openAr());
-closeBtn.addEventListener('click', () => void closeAr());
-sheetBtn.addEventListener('click', () => setSheet(sheet.hasAttribute('hidden')));
+startBtn.addEventListener('click', () => void open());
+closeBtn.addEventListener('click', () => void close());
+muteBtn.addEventListener('click', () => experience && setMuted(experience.toggleMute()));
+flipBtn.addEventListener('click', () => void experience?.flip());
+snapBtn.addEventListener('click', () => void experience?.snap());
+paletteBtn.addEventListener('click', () => experience?.cyclePalette());
 window.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !arOpen) return;
-  if (!sheet.hasAttribute('hidden')) setSheet(false);
-  else void closeAr();
+  if (e.key === 'Escape' && isOpen) void close();
 });
 
-// Release the camera while the tab is hidden; resume when it comes back.
-let suspended = false;
+// Release the camera while the tab is hidden; resume when it is back.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    if (arOpen && session?.isActive) {
+    if (isOpen && experience?.isRunning) {
       suspended = true;
-      void session.stop();
+      experience.pause();
     }
-  } else if (suspended) {
+  } else if (suspended && isOpen) {
     suspended = false;
-    if (arOpen) void openAr();
+    showStatus('Resuming…');
+    experience?.resume().then(
+      () => showStatus(''),
+      (err: unknown) => showError((err as { kind?: string } | null)?.kind ?? 'unknown'),
+    );
   }
 });

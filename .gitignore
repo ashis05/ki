@@ -1,6 +1,9 @@
 node_modules
 dist
+dist-e2e
 .idea
 .DS_Store
 *.log
 test/.tmp
+# generated from node_modules by the build (see vite.config.ts)
+public/mediapipe

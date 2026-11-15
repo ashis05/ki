@@ -1,45 +1,49 @@
-# AR business card
+# Ki 気
 
-Scan the QR code on my business card, point your phone at the card, and it comes alive. A video plays on the card's face, and my links and projects float around it as real, tappable buttons anchored to the card in 3D.
-
-**Live:** https://ar-portfolio-weld.vercel.app
+Hold up your hand and charge an orb of energy in your palm. **Ki** (気, *life energy*) is a browser toy that tracks your hands through the camera and gives you something to play with. It works on any phone or laptop, with no app and no sign-up.
 
 <p align="center">
-  <img src="docs/readme/ar-view.png" alt="AR view: project tiles above the card, a looping video on the card, name, role and link buttons below it" width="300">
-  &nbsp;&nbsp;
-  <img src="docs/readme/landing-mobile.png" alt="Landing page on a phone: name, role, Start camera button, then links and projects" width="300">
+  <img src="docs/readme/landing.png" alt="Ki landing page: a glowing orb, Start button and the five gestures" width="220">
+  <img src="docs/readme/orb.png" alt="A charged azure orb with swirling bands and orbiting sparks" width="220">
+  <img src="docs/readme/merge.png" alt="Two hands merged into one larger orb" width="220">
 </p>
-<p align="center"><sub>Left: the AR view, from the automated test, which tracks a synthetic test card. Right: the landing page.</sub></p>
+<p align="center"><sub>Screenshots from the automated test, which drives the app with synthetic hands over a plain background.</sub></p>
+
+## Gestures
+
+| Gesture | What happens |
+|---|---|
+| ✋ **Open palm** | An orb charges up over your palm: a spark that grows while particles spiral in from your fingertips. |
+| ✊ **Fist** | The orb collapses inward. |
+| 🫸 **Push** toward the camera, or flick | The orb launches at you and bursts with a shockwave. |
+| 🤏 **Pinch** | Changes colour: azure, crimson, violet, gold, toxic green. |
+| 🙌 **Two open hands** brought together | Their orbs merge into one bigger orb. Pull apart to split it. |
+
+**Snap** saves a picture of you with the orb. Sound is generated live in the browser: a hum that rises as the orb charges, a whoosh on launch, a boom on burst.
 
 ## How it works
 
-- **Image tracking, no app.** [MindAR](https://github.com/hiukim/mind-ar-js) runs in the browser and recognises the printed card itself from its natural features. There is no QR-style marker on the card and nothing to install. Everything runs on the phone; the camera feed is never uploaded.
-- **Real HTML in 3D.** Links and project tiles are ordinary HTML elements placed in the card's 3D space with three.js `CSS3DRenderer`. They stay sharp at any distance, work with screen readers, and open with a normal tap. The video is a WebGL plane with a `VideoTexture`, aligned to the card.
-- **Useful without AR.** The page opens as a normal profile with the same links and projects. That covers a laptop, a denied camera, or someone without the card. The AR code (three.js, MindAR and TensorFlow.js, about 480 kB gzipped) only loads after **Start camera** is pressed. Until then the page is about 7 kB of JS and CSS plus fonts.
-- **Respectful of the device.** The camera stops when the tab is hidden or the AR view is closed, and resumes when the tab is shown again. A **Links** button stays on screen, so links are one tap away even if tracking jitters.
+```
+camera ──▶ MediaPipe HandLandmarker (WASM + GPU, on device)
+             21 landmarks per hand, up to 2 hands
+               │
+               ▼
+           One-Euro filter (smooth without lag)
+               │
+               ▼
+           gestures.ts: pure state machine per hand
+             open / fist / pinch with hysteresis, push detection,
+             two-hand merge and split
+               │
+               ▼
+           three.js: orb shader (domain-warped swirl, fresnel rim),
+             particle rings, bursts, bloom; springs make the orb trail your hand
+```
 
-```
- landing page (2D, tiny)
-   │  Start camera  (user gesture: needed for camera + video on iOS)
-   ▼
- import('./ar/session')  ──▶  MindARThree  ──▶  card found
-                                              ├─ WebGL anchor: video plane on the card
-                                              └─ CSS3D anchor: name, links, projects
-```
-
-## Project layout
-
-```
-index.html            meta, OG tags, mount point
-src/content.ts        everything shown: name, links, projects (edit this)
-src/main.ts           landing page, AR overlay, states, visibility handling
-src/ar/session.ts     MindAR + three.js setup, video plane, tracking events, tuning
-src/ar/panels.ts      CSS3D panels placed around the card
-src/ar/errors.ts      camera / browser errors mapped to helpful messages
-public/targets/       card.mind (compiled tracking target of the card)
-public/media/         card-loop.mp4 (960 px, 0.5 MB)
-test/                 end-to-end test with a fake camera
-```
+- **Everything runs on your device.** Hand tracking is Google's MediaPipe model running in WebAssembly on the GPU, served from this site. Video frames never leave the browser.
+- **Robust gestures.** Fingers are classified from joint geometry normalised by palm size, so gestures work near and far. Hysteresis and short dwell times stop flicker between states. A push is the hand quickly growing in the frame.
+- **Fast landing.** The first page is about 90 kB including fonts. three.js, the tracker and the 7.8 MB model load only after **Start**.
+- **Adapts to the device.** If the frame rate drops, it lowers the resolution, particle count and bloom. Reduced-motion settings turn off screen shake and flashes.
 
 ## Run it
 
@@ -48,44 +52,43 @@ npm install
 npm run dev        # https on your LAN, so a phone can open it and use the camera
 ```
 
-Open the `https://<your-ip>:5173` address on a phone on the same Wi-Fi. Accept the self-signed certificate warning, press **Start camera**, and point it at the card.
+Open the `https://<your-ip>:5173` address on your phone (accept the self-signed certificate), or `https://localhost:5173` on your computer.
 
 ```bash
 npm run typecheck && npm run lint
+npm test           # vitest: gestures, filters, coordinate mapping (no camera needed)
 npm run build      # static site in dist/
-npm run test:e2e   # builds, then runs the AR flow in headless Chromium
+npm run test:e2e   # full run in headless Chromium with a fake camera (about 10 minutes)
 ```
 
-### The end-to-end test
+The end-to-end test builds a separate test bundle. In it, `?fake=open|fist|pinch|two|push` feeds synthetic hand landmarks, so every gesture can be checked and screenshotted without a person. These hooks are compiled out of the production build, and the test asserts that. The same test runs the real hand tracker on a fake camera feed and on an openly licensed palm photo, which is downloaded at test time and not committed.
 
-The test can't use the real card, so `test/make-fixtures.mjs` draws a synthetic card and compiles it with MindAR's own compiler. It then feeds Chromium a fake camera video of that card. The checks:
+## Project layout
 
-- the landing page renders, and the AR code and video are not downloaded before Start;
-- the card is found, the video plays, and all three panels appear;
-- every link anchored in 3D is hit-testable, and a real tap on GitHub opens it;
-- the Links sheet opens;
-- the camera is released when the page is hidden and when AR is closed, and tracking resumes afterwards.
+```
+index.html                 landing page markup + experience overlay
+src/main.ts                landing, Start, lifecycle (pause when hidden), errors
+src/experience/
+  hands.ts                 MediaPipe HandLandmarker, GPU with CPU fallback
+  oneeuro.ts               One-Euro landmark filter
+  gestures.ts              gesture classification + state machine (pure, tested)
+  coords.ts                video ↔ screen ↔ world mapping, mirrored selfie view
+  orb.ts, shaders.ts       the orb: swirl shader, shell, particles
+  rig.ts                   orbs follow hands with spring physics
+  fx.ts                    implode, launch, shockwave, sparks
+  scene.ts                 renderer, bloom, adaptive quality
+  audio.ts                 synthesized sound (Web Audio)
+  snap.ts                  photo capture
+public/models/             hand_landmarker.task (MediaPipe, float16)
+```
 
-Paths to Chromium, playwright-core and ffmpeg can be overridden with `CHROMIUM_PATH`, `PLAYWRIGHT_CORE` and `FFMPEG` (see `test/lib.mjs`).
-
-## Changing the card
-
-1. Compile the new card artwork into a target with the [MindAR image target compiler](https://hiukim.github.io/mind-ar-js-doc/tools/compile). Use the flat print file, not a photo. Busy, high-contrast artwork tracks best; big empty areas don't.
-2. Save it as `public/targets/card.mind`. The layout reads the card's aspect ratio from the file, so any card size works.
-3. Edit `src/content.ts` for links and projects, and replace `public/media/card-loop.mp4` for the video. Keep it 16:9, short, muted and small.
-
-Keep the source artwork in the repo next to the `.mind` file. A `.mind` file can't be turned back into an image.
-
-## Deploy
-
-It is a static site: `npm run build` outputs `dist/`, which any static host can serve. It needs HTTPS for camera access. On Vercel the project uses the Vite preset (build `npm run build`, output `dist`).
+The MediaPipe WASM files are copied from `node_modules` into `public/mediapipe/` by a small Vite plugin on every dev or build run, so there is no postinstall step.
 
 ## Notes
 
-- Pinned versions: `three` 0.160, because MindAR 1.2.5 uses `sRGBEncoding`, which three removed in 0.162. Upgrade the two together.
-- Tracking settings (`filterMinCF`, `missTolerance`) live at the top of `src/ar/session.ts`. Tune them on a real phone with the printed card.
-- Tested in headless Chromium with a fake camera. Check it on a real iPhone (Safari) and Android (Chrome) with the printed card after changes.
+- Needs WebGL2 and camera access over HTTPS. Built for recent Chrome and Safari, but so far tested only in headless Chromium. The gesture thresholds in `gestures.ts` were tuned with synthetic hands and one real photo, so they may need tweaking on real devices.
+- Hand tracking model: [MediaPipe Hand Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker) (Apache 2.0).
 
 ## License
 
-Code: [MIT](LICENSE) © 2026 Ashis Wadhwani. The card artwork, video and personal content are not covered by the license.
+[MIT](LICENSE) © 2026 Ashis Wadhwani

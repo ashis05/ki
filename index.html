@@ -3,22 +3,96 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Ashis Wadhwani · AR business card</title>
-    <meta name="description" content="Point your phone at Ashis Wadhwani's business card to see his work, links and projects appear in augmented reality. Platform, DevOps &amp; Cloud Engineer, Mumbai." />
-    <meta name="theme-color" content="#1d1915" />
+    <title>Ki · hand-tracked energy orb</title>
+    <meta name="description" content="Hold up your open palm and a swirling energy orb forms in your hand. Fist to cancel, push to launch, pinch to change colour. Runs entirely in your browser." />
+    <meta name="theme-color" content="#07080d" />
     <meta name="color-scheme" content="dark" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Ashis Wadhwani · AR business card" />
-    <meta property="og:description" content="Point your phone at the card. Links, projects and a live loop appear on top of it." />
-    <meta property="og:site_name" content="Ashis Wadhwani" />
+    <meta property="og:title" content="Ki · hand-tracked energy orb" />
+    <meta property="og:description" content="Open palm to charge a swirling orb, push to launch it, pinch to change colour. Camera stays on your device." />
+    <meta property="og:site_name" content="Ki" />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <main class="landing" id="landing">
+        <div class="teaser" aria-hidden="true">
+          <span class="teaser__glow"></span>
+          <span class="teaser__swirl"></span>
+          <span class="teaser__swirl teaser__swirl--b"></span>
+          <span class="teaser__core"></span>
+          <i class="teaser__dot" style="--i: 0"></i><i class="teaser__dot" style="--i: 1"></i><i class="teaser__dot" style="--i: 2"></i>
+          <i class="teaser__dot" style="--i: 3"></i><i class="teaser__dot" style="--i: 4"></i><i class="teaser__dot" style="--i: 5"></i>
+        </div>
+
+        <h1 class="title">Ki <span class="title__kanji" lang="ja" aria-hidden="true">気</span></h1>
+        <p class="lede">Hold up your hand. Open palm to charge, fist to cancel, push to launch.</p>
+        <button class="btn" type="button" id="start">Start</button>
+        <p class="note" id="support-note" role="status">Runs entirely on your device. Nothing is recorded or uploaded.</p>
+
+        <ul class="legend" aria-label="Gestures">
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.500V6a2 2 0 0 0-4 0v8M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.800 0-4.500-.860-5.990-2.340l-3.600-3.600a2 2 0 0 1 2.830-2.820L7 15"/></svg>
+            <b>Open palm</b><span>Charge an orb</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.500 10.500a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2V15a5.500 5.500 0 0 1-5.500 5.500h-2A5.500 5.500 0 0 1 5.500 15zM9 8.500v3.500M12 8.500v3.500M15 8.500v3.500M5.500 14.500h6.500"/></svg>
+            <b>Fist</b><span>Collapse it</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="16" r="3.500"/><path d="M12.500 11.500L20 4M14 4h6v6"/></svg>
+            <b>Push</b><span>Launch toward you</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.500" cy="12" r="2"/><circle cx="14.500" cy="12" r="2"/><path d="M3 12h2.500M18.500 12H21M12 5v2M12 17v2"/></svg>
+            <b>Pinch</b><span>Change colour</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.500" cy="12" r="5.500"/><circle cx="15.500" cy="12" r="5.500"/></svg>
+            <b>Two hands</b><span>Merge, then split</span>
+          </li>
+        </ul>
+
+        <footer class="foot">
+          Made by <a href="https://www.ashiswadhwani.in" target="_blank" rel="noopener noreferrer">Ashis Wadhwani</a>
+          <span aria-hidden="true">·</span>
+          <a href="https://github.com/ashis05" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </footer>
+      </main>
+
+      <div class="exp" id="exp" role="dialog" aria-modal="true" aria-label="Ki" hidden>
+        <div class="exp__stage" id="stage"><video id="cam" playsinline muted autoplay></video></div>
+        <div class="exp__flash" id="flash" aria-hidden="true"></div>
+        <p class="exp__hint" id="hint" role="status" aria-live="polite"></p>
+        <div class="exp__bar exp__bar--top">
+          <button class="icon-btn" type="button" id="close" aria-label="Close and stop the camera">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <span class="exp__spacer"></span>
+          <button class="icon-btn" type="button" id="palette" aria-label="Colour: azure. Pinch or tap to change">
+            <span class="dot" id="palette-dot"></span>
+          </button>
+          <button class="icon-btn" type="button" id="mute" aria-label="Mute sound" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="on" d="M4 10v4h3.500L12 18V6L7.500 10zM15.500 9a4 4 0 0 1 0 6M18 6.500a8 8 0 0 1 0 11"/><path class="off" d="M4 10v4h3.500L12 18V6L7.500 10zM16 9.500l5 5M21 9.500l-5 5"/></svg>
+          </button>
+          <button class="icon-btn" type="button" id="flip" aria-label="Switch camera" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a1 1 0 0 1 1-1h3M20 16v2a1 1 0 0 1-1 1h-3M4 8l3-3M4 8l3 3M20 16l-3-3M20 16l-3 3"/></svg>
+          </button>
+        </div>
+        <div class="exp__bar exp__bar--bottom">
+          <button class="snap" type="button" id="snap" aria-label="Snap a picture">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.500-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.200"/></svg>
+            Snap
+          </button>
+        </div>
+        <div class="exp__state" id="state" hidden></div>
+        <p class="exp__toast" id="toast" role="status"></p>
+      </div>
+    </div>
     <noscript>
-      <p style="padding:2rem;font-family:system-ui">
-        This page needs JavaScript. Visit <a href="https://www.ashiswadhwani.in">ashiswadhwani.in</a> instead.
+      <p style="padding: 2rem; font-family: system-ui; color: #ddd">
+        Ki needs JavaScript and a camera. Visit <a href="https://www.ashiswadhwani.in">ashiswadhwani.in</a> instead.
       </p>
     </noscript>
     <script type="module" src="/src/main.ts"></script>

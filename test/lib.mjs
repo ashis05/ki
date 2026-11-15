@@ -18,7 +18,6 @@ export const CHROMIUM_PATH =
   process.env.CHROMIUM_PATH ?? '/home/ashis/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome';
 export const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
 
-export const fixtures = path.join(root, 'test', 'fixtures');
 export const tmp = path.join(root, 'test', '.tmp');
 export const shots = path.join(root, 'docs', 'readme');
 
@@ -27,7 +26,7 @@ export const { chromium } = createRequire(import.meta.url)(PLAYWRIGHT_CORE);
 const TYPES = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.mp4': 'video/mp4', '.woff2': 'font/woff2',
-  '.mind': 'application/octet-stream', '.json': 'application/json',
+  '.wasm': 'application/wasm', '.task': 'application/octet-stream', '.json': 'application/json',
 };
 
 /**
