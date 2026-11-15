@@ -4,10 +4,7 @@ Hold up your hand and charge an orb of energy in your palm. **Ki** (気, *life e
 
 <p align="center">
   <img src="docs/readme/landing.png" alt="Ki landing page: a glowing orb, Start button and the five gestures" width="220">
-  <img src="docs/readme/orb.png" alt="A charged azure orb with swirling bands and orbiting sparks" width="220">
-  <img src="docs/readme/merge.png" alt="Two hands merged into one larger orb" width="220">
 </p>
-<p align="center"><sub>Screenshots from the automated test, which drives the app with synthetic hands over a plain background.</sub></p>
 
 ## Gestures
 
