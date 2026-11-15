@@ -1,4 +1,9 @@
-# Ki 気
+<picture>
+  <source media="(max-width: 700px)" srcset="docs/readme/header-mobile.svg">
+  <img src="docs/readme/header.svg" alt="Ki: an energy orb charging over an open palm, cycling through five colours, above the five gestures: open palm, fist, push, pinch, two hands" width="100%">
+</picture>
+
+**Live: https://ki.ashiswadhwani.in**
 
 Hold up your hand and charge an orb of energy in your palm. **Ki** (気, *life energy*) is a browser toy that tracks your hands through the camera and gives you something to play with. It works on any phone or laptop, with no app and no sign-up.
 
@@ -77,6 +82,7 @@ src/experience/
   audio.ts                 synthesized sound (Web Audio)
   snap.ts                  photo capture
 public/models/             hand_landmarker.task (MediaPipe, float16)
+docs/readme/make_svg.py   draws the animated header above (python, fonttools)
 ```
 
 The MediaPipe WASM files are copied from `node_modules` into `public/mediapipe/` by a small Vite plugin on every dev or build run, so there is no postinstall step.
